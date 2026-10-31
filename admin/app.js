@@ -16,3 +16,12 @@ async function remove(item){if(!confirm('هل تريد حذف هذا العمل 
 $('mediaFile').onchange=e=>{file=e.target.files?.[0]||null;$('fileName').textContent=file?file.name+' · '+(file.size/1048576).toFixed(1)+' MB':'';if(file&&!$('title').value)$('title').value=file.name.replace(/\.[^.]+$/,'').replace(/[-_]/g,' ')};
 $('uploadForm').addEventListener('submit',async e=>{e.preventDefault();if(!file)return;if(file.size>524288000){$('uploadStatus').textContent='حجم الملف يتجاوز 500MB.';return}const button=$('uploadButton');button.disabled=true;button.textContent='جارٍ الرفع...';const type=file.type.startsWith('video/')?'video':'image';const path=type+'/'+crypto.randomUUID()+'.'+file.name.split('.').pop().toLowerCase();try{const {error:upErr}=await supabase.storage.from('nisreen-media').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type});if(upErr)throw upErr;const {data}=supabase.storage.from('nisreen-media').getPublicUrl(path);const {error:dbErr}=await supabase.from('media_items').insert({title:$('title').value.trim(),description:$('description').value.trim(),category:$('category').value,media_type:type,file_path:path,public_url:data.publicUrl,is_published:$('publishNow').checked,sort_order:0});if(dbErr){await supabase.storage.from('nisreen-media').remove([path]);throw dbErr}$('uploadStatus').textContent='تم رفع العمل وحفظه.';$('uploadForm').reset();file=null;await load();tab('library')}catch(err){console.error(err);$('uploadStatus').textContent='حدث خطأ أثناء الرفع. تحقق من الصلاحيات والاتصال.'}finally{button.disabled=false;button.textContent='رفع وحفظ العمل ←'}});
 sessionCheck();
+
+/* Ensure taps on login field rows focus the native inputs */
+['email','password'].forEach(id=>{
+  const field=document.getElementById(id);
+  const row=field?.closest('.login-field');
+  if(!field||!row)return;
+  row.addEventListener('click',()=>{field.focus({preventScroll:true});});
+  field.addEventListener('pointerdown',()=>{field.focus({preventScroll:true});});
+});
