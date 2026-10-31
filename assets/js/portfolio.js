@@ -27,9 +27,12 @@ document.getElementById('year').textContent=new Date().getFullYear();
 render();
 async function loadPublishedMedia(){
  try{
-  const {data,error}=await supabase.from('media_items').select('id,title,description,category,media_type,public_url,poster_url,sort_order,created_at').eq('is_published',true).order('sort_order',{ascending:true}).order('created_at',{ascending:false});
-  if(error){console.warn('Could not load published portfolio media:',error.message);return;}
-  const uploaded=(data||[]).map((item,index)=>({id:item.id,src:item.public_url,poster:item.poster_url||'',type:item.media_type,label:(item.category||'GENERAL').replace(/[-_]/g,' ').toUpperCase(),alt:item.title||'NISREEN HAMMOUD portfolio',title:item.title||'',description:item.description||'',num:media.length+index+1}));
+  const {data,error}=await supabase.from('media_items').select('id,title,description,category,media_type,file_path,public_url,poster_url,sort_order,created_at,is_published,is_deleted').or('file_path.like.legacy:%,and(is_published.eq.true,is_deleted.eq.false)').order('sort_order',{ascending:true}).order('created_at',{ascending:false});
+  if(error){console.warn('Could not load portfolio visibility:',error.message);return;}
+  const rows=data||[];
+  const legacyState=new Map(rows.filter(x=>(x.file_path||'').startsWith('legacy:')).map(x=>[x.file_path.slice(7),x]));
+  media=media.filter(item=>{const state=legacyState.get(item.src);return !state||(!state.is_deleted&&state.is_published);});
+  const uploaded=rows.filter(item=>!(item.file_path||'').startsWith('legacy:')&&item.is_published&&!item.is_deleted).map((item,index)=>({id:item.id,src:item.public_url,poster:item.poster_url||'',type:item.media_type,label:(item.category||'GENERAL').replace(/[-_]/g,' ').toUpperCase(),alt:item.title||'NISREEN HAMMOUD portfolio',title:item.title||'',description:item.description||'',num:media.length+index+1}));
   media=[...media,...uploaded];
   const count=document.querySelector('.portfolio .count');if(count)count.textContent=String(media.length).padStart(2,'0')+' selected frames';
   render(document.querySelector('.filter.active')?.dataset.filter||'all');
